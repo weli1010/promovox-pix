@@ -150,7 +150,17 @@ app.post('/criar-pix', async (req, res) => {
     const { valor, txid, chavePix } = req.body;
     const tokenData = await getToken();
     const token = tokenData.access_token;
+    
+    if (!token) {
+      return res.status(500).json({ error: 'Token nao obtido', tokenData });
+    }
+    
     const cobranca = await criarCobranca(token, valor, txid, chavePix);
+    
+    if (!cobranca.loc) {
+      return res.status(500).json({ error: 'Sem loc na cobranca', cobranca });
+    }
+    
     const qrcode = await gerarQRCode(token, cobranca.loc.id);
     res.json({
       txid,
