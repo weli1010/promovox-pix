@@ -65,7 +65,6 @@ const CLIENT_SECRET = 'Client_Secret_ce169552995bdaaf1b19b9b7ea9acd408256ca4e';
 async function getToken() {
   const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
   const agent = new https.Agent({ cert, key });
-  
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({ grant_type: 'client_credentials' });
     const options = {
@@ -99,7 +98,6 @@ async function criarCobranca(token, valor, txid, chavePix) {
     chave: chavePix,
     solicitacaoPagador: `Promovox - Propaganda #${txid}`
   });
-
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'pix.api.efipay.com.br',
@@ -150,23 +148,21 @@ app.post('/criar-pix', async (req, res) => {
     const { valor, txid, chavePix } = req.body;
     const tokenData = await getToken();
     const token = tokenData.access_token;
-    
     if (!token) {
       return res.status(500).json({ error: 'Token nao obtido', tokenData });
     }
-    
     const cobranca = await criarCobranca(token, valor, txid, chavePix);
-    
     if (!cobranca.loc) {
       return res.status(500).json({ error: 'Sem loc na cobranca', cobranca });
     }
-    
     const qrcode = await gerarQRCode(token, cobranca.loc.id);
     res.json({
       txid,
       qrcode: qrcode.qrcode,
       imagemQrcode: qrcode.imagemQrcode,
-      pixCopiaECola: qrcode.qrcode
+      pixCopiaECola: qrcode.qrcode,
+      cobranca,
+      qrcodeRaw: qrcode
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
