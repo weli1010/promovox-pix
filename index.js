@@ -122,27 +122,6 @@ async function criarCobranca(token, valor, txid, chavePix) {
   });
 }
 
-async function gerarQRCode(token, locId) {
-  const agent = new https.Agent({ cert, key });
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'pix.api.efipay.com.br',
-      port: 443,
-      path: `/v2/loc/${locId}/qrcode`,
-      method: 'GET',
-      agent,
-      headers: { 'Authorization': `Bearer ${token}` }
-    };
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
-    });
-    req.on('error', reject);
-    req.end();
-  });
-}
-
 app.post('/criar-pix', async (req, res) => {
   try {
     const { valor, txid, chavePix } = req.body;
@@ -152,21 +131,28 @@ app.post('/criar-pix', async (req, res) => {
       return res.status(500).json({ error: 'Token nao obtido', tokenData });
     }
     const cobranca = await criarCobranca(token, valor, txid, chavePix);
-    if (!cobranca.loc) {
-      return res.status(500).json({ error: 'Sem loc na cobranca', cobranca });
+    if (!cobranca.pixCopiaECola) {
+      return res.status(500).json({ error: 'Sem pixCopiaECola', cobranca });
     }
-    const qrcode = await gerarQRCode(token, cobranca.loc.id);
     res.json({
-      txid,
-      qrcode: qrcode.qrcode,
-      imagemQrcode: qrcode.imagemQrcode,
-      pixCopiaECola: qrcode.qrcode,
-      cobranca,
-      qrcodeRaw: qrcode
+      txid: cobranca.txid,
+      pixCopiaECola: cobranca.pixCopiaECola,
+      status: cobranca.status,
+      expiracao: cobranca.calendario.expiracao
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+app.post('/webhook-pix', (req, res) => {
+  const { pix } = req.body;
+  if (pix && pix.length > 0) {
+    pix.forEach(pagamento => {
+      console.log('PIX recebido:', pagamento.txid, pagamento.valor);
+    });
+  }
+  res.status(200).json({ ok: true });
 });
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
