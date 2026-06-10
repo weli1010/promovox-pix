@@ -68,6 +68,7 @@ const options = {
   client_id: 'Client_Id_b9466991b20e6a589caa32ebee040b3bd42b4c8e',
   client_secret: 'Client_Secret_ce169552995bdaaf1b19b9b7ea9acd408256ca4e',
   certificate: certPath,
+  pemKey: certPath,
   certificate_type: 'pem'
 };
 
@@ -84,7 +85,6 @@ app.post('/criar-pix', async (req, res) => {
       solicitacaoPagador: "Promovox - Propaganda"
     };
 
-    console.log('Chamando pixCreateImmediateCharge...');
     const cobranca = await efipay.pixCreateImmediateCharge({}, body);
     console.log('Cobranca criada:', JSON.stringify(cobranca));
 
