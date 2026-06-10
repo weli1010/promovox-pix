@@ -1,9 +1,13 @@
 const express = require('express');
-const https = require('https');
+const EfiPay = require('sdk-node-apis-efi');
 const app = express();
 app.use(express.json());
 
-const cert = `-----BEGIN CERTIFICATE-----
+const options = {
+  sandbox: false,
+  client_id: 'Client_Id_b9466991b20e6a589caa32ebee040b3bd42b4c8e',
+  client_secret: 'Client_Secret_ce169552995bdaaf1b19b9b7ea9acd408256ca4e',
+  certificate: Buffer.from(`-----BEGIN CERTIFICATE-----
 MIIEVDCCAjygAwIBAgIQIg58FjmgZYfuuF/u2EaOPDANBgkqhkiG9w0BAQsFADCB
 rTELMAkGA1UEBhMCQlIxFTATBgNVBAgMDE1pbmFzIEdlcmFpczEsMCoGA1UECgwj
 RWZpIFMuQS4gLSBJbnN0aXR1aWNhbyBkZSBQYWdhbWVudG8xFzAVBgNVBAsMDklu
@@ -28,9 +32,8 @@ xf//u/HxwqRRqaxqnr5To0oatrbq3TYGiCFujbjlQ022sRhy29yJaijFSZFqGLtG
 clB4lFoPyeTl4u/fpWxDIkXm5kMpTNj3l4a6/yAyUlDDn+Akuri1Uohr2EZBrtTD
 QIz1xzZPjK4IURBMBKIsFUH7Yh3xZD2vgiktBgMqG6q9g/JhE+oFAwQRCi9V+tib
 xnSBoNDdf98=
------END CERTIFICATE-----`;
-
-const key = `-----BEGIN PRIVATE KEY-----
+-----END CERTIFICATE-----
+-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDcwPcFTQRz/mVG
 umIP37IAid3nejYUthKF/T0yB0db4e7/2b4bd1vEztfoqI8Et0gzGYV3q7Ol6cHn
 yOFBDaPg2FdROpvG6WLzp6iI8uMTGUTT5ecDMykTOUt56bj5kITfM/iPeXPSD7x8
@@ -57,91 +60,36 @@ lg0dIh84YtxNqTgTMi9VmS9FDGS+uaoGoYhucal/zQKBgCYoD6qhUIqXcWujUYn5
 q0f81Mhc0G91vxPIuIQmxCvOz+MP4weIu+jYr5hnXVda55wF4kVA4L3E0Vg75SCV
 JQGOyVMg2Y5AB4u9Aq8u6iTq6WXEPFrKaZTM7QGjtNz6k1KnnL/sgtTMOD8CebVN
 fEt14PV6vOMN8OOVR08BOe1B
------END PRIVATE KEY-----`;
-
-const CLIENT_ID = 'Client_Id_b9466991b20e6a589caa32ebee040b3bd42b4c8e';
-const CLIENT_SECRET = 'Client_Secret_ce169552995bdaaf1b19b9b7ea9acd408256ca4e';
-
-async function getToken() {
-  const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-  const agent = new https.Agent({ cert, key });
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ grant_type: 'client_credentials' });
-    const options = {
-      hostname: 'pix.api.efipay.com.br',
-      port: 443,
-      path: '/oauth/token',
-      method: 'POST',
-      agent,
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
-      }
-    };
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
-    });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
-  });
-}
-
-async function criarCobranca(token, valor, txid, chavePix) {
-  const agent = new https.Agent({ cert, key });
-  const body = JSON.stringify({
-    calendario: { expiracao: 900 },
-    valor: { original: valor },
-    chave: chavePix,
-    solicitacaoPagador: `Promovox - Propaganda #${txid}`
-  });
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'pix.api.efipay.com.br',
-      port: 443,
-      path: `/v2/cob/${txid}`,
-      method: 'PUT',
-      agent,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
-      }
-    };
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
-    });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
-  });
-}
+-----END PRIVATE KEY-----`),
+  certificate_type: 'pem'
+};
 
 app.post('/criar-pix', async (req, res) => {
   try {
     const { valor, txid, chavePix } = req.body;
-    const tokenData = await getToken();
-    const token = tokenData.access_token;
-    if (!token) {
-      return res.status(500).json({ error: 'Token nao obtido', tokenData });
-    }
-    const cobranca = await criarCobranca(token, valor, txid, chavePix);
-    if (!cobranca.pixCopiaECola) {
-      return res.status(500).json({ error: 'Sem pixCopiaECola', cobranca });
-    }
+    const efipay = new EfiPay(options);
+
+    const body = {
+      calendario: { expiracao: 900 },
+      valor: { original: valor },
+      chave: chavePix,
+      solicitacaoPagador: `Promovox - Propaganda #${txid}`
+    };
+
+    const params = { txid };
+    const cobranca = await efipay.pixCreateCharge(params, body);
+
+    const qrcode = await efipay.pixGenerateQRCode({ id: cobranca.loc.id });
+
     res.json({
       txid: cobranca.txid,
-      pixCopiaECola: cobranca.pixCopiaECola,
+      pixCopiaECola: qrcode.qrcode,
+      imagemQrcode: qrcode.imagemQrcode,
       status: cobranca.status,
       expiracao: cobranca.calendario.expiracao
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message, details: error });
   }
 });
 
