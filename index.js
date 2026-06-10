@@ -75,7 +75,6 @@ const options = {
 app.post('/criar-pix', async (req, res) => {
   try {
     const { valor, chavePix } = req.body;
-    console.log('Criando PIX:', valor, chavePix);
     const efipay = new EfiPay(options);
 
     const body = {
@@ -86,14 +85,12 @@ app.post('/criar-pix', async (req, res) => {
     };
 
     const cobranca = await efipay.pixCreateImmediateCharge({}, body);
-    console.log('Cobranca criada:', JSON.stringify(cobranca));
-
     const qrcode = await efipay.pixGenerateQRCode({ id: cobranca.loc.id });
-    console.log('QRCode gerado:', JSON.stringify(qrcode));
 
     res.json({
       txid: cobranca.txid,
       pixCopiaECola: qrcode.qrcode,
+      linkPagamento: 'https://' + cobranca.location,
       imagemQrcode: qrcode.imagemQrcode,
       status: cobranca.status
     });
