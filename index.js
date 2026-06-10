@@ -76,17 +76,14 @@ app.post('/criar-pix', async (req, res) => {
   try {
     const { valor, chavePix } = req.body;
     const efipay = new EfiPay(options);
-
     const body = {
       calendario: { expiracao: 900 },
       valor: { original: valor },
       chave: chavePix,
       solicitacaoPagador: "Promovox - Propaganda"
     };
-
     const cobranca = await efipay.pixCreateImmediateCharge({}, body);
     const qrcode = await efipay.pixGenerateQRCode({ id: cobranca.loc.id });
-
     res.json({
       txid: cobranca.txid,
       pixCopiaECola: qrcode.qrcode,
@@ -96,15 +93,39 @@ app.post('/criar-pix', async (req, res) => {
     });
   } catch (error) {
     console.error('ERRO CRIAR PIX:', error.message, JSON.stringify(error));
-    res.status(500).json({ error: error.message, details: JSON.stringify(error) });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/webhook-pix', (req, res) => {
-  const { pix } = req.body;
-  if (pix && pix.length > 0) {
-    pix.forEach(p => console.log('PIX recebido:', p.txid, p.valor));
+app.post('/registrar-webhook', async (req, res) => {
+  try {
+    const efipay = new EfiPay(options);
+    const params = { chave: 'b64c383a-b3e6-4ff3-b58f-ac23c5b72390' };
+    const body = { webhookUrl: 'https://promovox-pix.onrender.com/webhook-pix?ignorar=' };
+    const resultado = await efipay.pixConfigWebhook(params, body);
+    res.json({ sucesso: true, resultado });
+  } catch (error) {
+    console.error('ERRO WEBHOOK:', error.message, JSON.stringify(error));
+    res.status(500).json({ error: error.message });
   }
+});
+
+app.post('/webhook-pix', async (req, res) => {
+  try {
+    console.log('Webhook recebido:', JSON.stringify(req.body));
+    const { pix } = req.body;
+    if (pix && pix.length > 0) {
+      for (const pagamento of pix) {
+        console.log('PIX pago:', pagamento.txid, pagamento.valor);
+      }
+    }
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    res.status(200).json({ ok: true });
+  }
+});
+
+app.get('/webhook-pix', (req, res) => {
   res.status(200).json({ ok: true });
 });
 
