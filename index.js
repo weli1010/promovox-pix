@@ -101,7 +101,7 @@ app.post('/registrar-webhook', async (req, res) => {
   try {
     const efipay = new EfiPay(options);
     const params = { chave: 'b64c383a-b3e6-4ff3-b58f-ac23c5b72390' };
-    const body = { webhookUrl: 'https://promovox-pix.onrender.com/webhook-pix?ignorar=' };
+    const body = { webhookUrl: 'https://propagandawatts.app.n8n.cloud/webhook/pagamento-pix?ignorar=' };
     const resultado = await efipay.pixConfigWebhook(params, body);
     res.json({ sucesso: true, resultado });
   } catch (error) {
