@@ -1,13 +1,11 @@
 const express = require('express');
 const EfiPay = require('sdk-node-apis-efi');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 app.use(express.json());
 
-const options = {
-  sandbox: false,
-  client_id: 'Client_Id_b9466991b20e6a589caa32ebee040b3bd42b4c8e',
-  client_secret: 'Client_Secret_ce169552995bdaaf1b19b9b7ea9acd408256ca4e',
-  certificate: Buffer.from(`-----BEGIN CERTIFICATE-----
+const certContent = `-----BEGIN CERTIFICATE-----
 MIIEVDCCAjygAwIBAgIQIg58FjmgZYfuuF/u2EaOPDANBgkqhkiG9w0BAQsFADCB
 rTELMAkGA1UEBhMCQlIxFTATBgNVBAgMDE1pbmFzIEdlcmFpczEsMCoGA1UECgwj
 RWZpIFMuQS4gLSBJbnN0aXR1aWNhbyBkZSBQYWdhbWVudG8xFzAVBgNVBAsMDklu
@@ -60,7 +58,16 @@ lg0dIh84YtxNqTgTMi9VmS9FDGS+uaoGoYhucal/zQKBgCYoD6qhUIqXcWujUYn5
 q0f81Mhc0G91vxPIuIQmxCvOz+MP4weIu+jYr5hnXVda55wF4kVA4L3E0Vg75SCV
 JQGOyVMg2Y5AB4u9Aq8u6iTq6WXEPFrKaZTM7QGjtNz6k1KnnL/sgtTMOD8CebVN
 fEt14PV6vOMN8OOVR08BOe1B
------END PRIVATE KEY-----`),
+-----END PRIVATE KEY-----`;
+
+const certPath = path.join('/tmp', 'certificado.pem');
+fs.writeFileSync(certPath, certContent);
+
+const options = {
+  sandbox: false,
+  client_id: 'Client_Id_b9466991b20e6a589caa32ebee040b3bd42b4c8e',
+  client_secret: 'Client_Secret_ce169552995bdaaf1b19b9b7ea9acd408256ca4e',
+  certificate: certPath,
   certificate_type: 'pem'
 };
 
@@ -93,9 +100,7 @@ app.post('/criar-pix', async (req, res) => {
 app.post('/webhook-pix', (req, res) => {
   const { pix } = req.body;
   if (pix && pix.length > 0) {
-    pix.forEach(pagamento => {
-      console.log('PIX recebido:', pagamento.txid, pagamento.valor);
-    });
+    pix.forEach(p => console.log('PIX recebido:', p.txid, p.valor));
   }
   res.status(200).json({ ok: true });
 });
