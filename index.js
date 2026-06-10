@@ -66,30 +66,27 @@ fEt14PV6vOMN8OOVR08BOe1B
 
 app.post('/criar-pix', async (req, res) => {
   try {
-    const { valor, txid, chavePix } = req.body;
+    const { valor, chavePix } = req.body;
     const efipay = new EfiPay(options);
 
     const body = {
       calendario: { expiracao: 900 },
       valor: { original: valor },
       chave: chavePix,
-      solicitacaoPagador: `Promovox - Propaganda #${txid}`
+      solicitacaoPagador: "Promovox - Propaganda"
     };
 
-    const params = { txid };
-    const cobranca = await efipay.pixCreateCharge(params, body);
-
+    const cobranca = await efipay.pixCreateImmediateCharge({}, body);
     const qrcode = await efipay.pixGenerateQRCode({ id: cobranca.loc.id });
 
     res.json({
       txid: cobranca.txid,
       pixCopiaECola: qrcode.qrcode,
       imagemQrcode: qrcode.imagemQrcode,
-      status: cobranca.status,
-      expiracao: cobranca.calendario.expiracao
+      status: cobranca.status
     });
   } catch (error) {
-    res.status(500).json({ error: error.message, details: error });
+    res.status(500).json({ error: error.message });
   }
 });
 
